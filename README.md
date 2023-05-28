@@ -1,5 +1,5 @@
 # RedPitaya Muon Decay App
-This app uses a STEMlab 125-14 RedPitaya board as the only electronic device, in addition to the detector, to perform a muon-decay experiment to measure the time intervals between first pulses due to low-energy muons entering a scintillation or water-Cherenkov detector and a second pulses due to electrons coming from the decay of the muon inside the detector.</p>
+This app uses a STEMlab 125-14 RedPitaya board as the only electronic device, in addition to the detector, to perform a muon-decay experiment to measure the time intervals between first pulses due to low-energy muons entering a scintillation or water-Cherenkov detector and a second pulses due to electrons or positrons coming from the decay of the muon inside the detector.</p>
 
 ## Requisites
 
