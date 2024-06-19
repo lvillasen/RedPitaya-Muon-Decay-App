@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, user-scalable=no,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0">
+    <title>Red Pitaya Node</title>
+    
+    <link rel="stylesheet" href="./style.css">
+
+    <script src="https://unpkg.com/mathjs@11.8.0/lib/browser/math.js"></script>
+</head>
+
+<body>
+    <div class="block_container" style="background-color: #00b5e2; margin-left:5%; margin-right:5%;">
+        <p> </p>
+        <p> </p>
+        <br>
+
+        <h1> RedPitaya Muon Decay App </h1>
+
+
+        <h2> CIIEC-BUAP</h2>
+
+        <p style="font-size: 30px; margin-left: 80%;">May 27th, 2023 </p>
+        <p style="font-size: 20px; margin-left: 80%;"><a href="https://github.com/lvillasen/RedPitaya-Muon-Decay-App/">Source Code</a> </p>
+
+        <hr>
+
+        <p style="color:black;font-size:30px;">
+    <p style="color:black;font-size:30px;">This app uses a <a href="https://redpitaya.com/stemlab-125-14/">STEMlab 125-14 RedPitaya</a> board, 
+            shown in the picture below, as the only electronic device, in addition to the detector, to perform a muon-decay experiment to measure the time intervals between a first pulse due to a low-energy muon entering a scintillation or water-Cherenkov detector and a second pulse due to an electron coming from the decay of the muon inside the detector.</p>
+
+            <br><br>
+
+    <center><img src="./redpitaya.png" alt="Trulli" width="50%"></center>
+    <br><br>
+    <p style="color:black;font-size:30px;">
+It uses 
+<a href="https://nodejs.org/en/about">Node.js </a> and  
+<a href="https://developer.mozilla.org/en-US/docs/Learn/Server-side/Express_Nodejs/Introduction">Express</a>, along with Python scripts. It requires a RedPitaya board connected to the network and prepared according to <a href="https://redpitaya.readthedocs.io/en/latest/quickStart/quickStart.html">these</a> and <a href="https://github.com/lvillasen/RedPitaya-Muon-Decay-App">these instructions</a>. The Python scripts and the binary bitstream  used by this app are described in more detail <a href="https://github.com/lvillasen/RedPitaya-Muon-Decay"> here</a>.
+<br>
+<br>
+        <font color="#ffff00">CAUTION</font>: Do not use this app simultaneously with any other RedPitaya app. Be extremely 
+        cautious when using this app as it executes general-purpose bash commands and Python scripts. If 
+        you share this app with someone when the node.js scripts are running on the RedPitaya, it is 
+        equivalent to sharing the RedPitaya password with that person.
+        
+        </p>
+        <hr>
+     
+
+   <h2>1. Connect to RedPitaya Board</h2>
+
+<p style="color:black;font-size:30px;">
+
+    <label style="color:black;font-size:30px;">Input the IP or <i>rp-xxxxxx.local</i> label of the Redpitaya board: </label>
+        <input type="text" id="ip" class = "input" style="font-size: 100%;" onchange="connect()" value="rp-f01e55.local" size=14 ;></input>
+        <input class="favorite styled" type="button"  value="Connect" onclick="connect()">
+        <div style="color:green;font-size:30px;" id="connect_display"><font color="red"></font></div>
+
+<br><br>
+
+   <h2>2. Upload an Arbitrary Signal to Memory</h2>
+
+<p style="color:black;font-size:30px;">
+
+        
+      This Python script uploads an arbitrary signal of 1024 points to RAM to be generated on DAC1 at a rate of 125 MHz.
+The arbitrary signal has an amplitude between -1 V and +1 V and a time extension of 1024*8 ns = 8192 ns.
+<br><br>
+
+Connect ADC1 to DAC1 if you want to capture the arbitrary signal with the fast ADC.
+<br><br>    
+        </p>
+
+ <div  id="block_container" style="text-align:center;margin: 3px solid;">
+            <p style="color:black;font-size:30px;"> Paste o Write Your Python Code Here</p>
+
+<textarea id="code_input_upload" style="width: 100%; white-space: pre; border:solid 5px #003b5c;"  rows="20" cols="120">
+#!/usr/bin/python
+###############################################################
+PERIOD = 1000 # ns
+###############################################################
+PERIOD = int(PERIOD/8)
+import numpy as np
+from periphery import MMIO
+from time import *
+import random
+
+dat = []
+####################################################################
+regset = MMIO(0x41240000, 0xc)
+regset.write32(0,0)   # Reset port A
+regset.write32(0,1)   # Reset port A
+
+
+w = 2**10  * 16 # = 2*8192 ns
+tau = 100 # ns
+A1 = -1 # V
+A2 = -.3 # V
+A3 = -.6 # V
+
+risetime = 50 #ns
+T1 = 1000 # ns
+T2 = 3000 # ns 
+#x2 = 1300+(8000-1300)*random.random() # ns, DeltaT between 1300 and 8000 ns
+
+T3 = 5000 # ns
+print("First pulso at t= ",T1," ns")
+print("Second pulso at t= ",T2," ns")
+print("Third pulso at t= ",T3," ns")
+
+
+for i in range(0,20000,8):
+    if i<T1:y = 0
+    elif i<(T1 + risetime) :y = A1*(i-T1)/(risetime) 
+    elif i<T2 :y = A1*np.exp(-(i-T1)/tau) 
+    elif i<(T2 + risetime) :y = A2*(i-T2)/(risetime) 
+    elif i<T3: y = A1*np.exp(-(i-T1)/tau) + A2*np.exp(-(i-T2)/tau) 
+    elif i<(T3 + risetime) :y = A3*(i-T3)/(risetime) 
+    elif i<20000: y = A1*np.exp(-(i-T1)/tau) +A2*np.exp(-(i-T2)/tau) +A3*np.exp(-(i-T3)/tau)
+    COUNTS = int(y * 2**14/(-2) + 2**13)
+    #print(COUNTS,end = " ")
+    regset.write32(0,COUNTS*256*256+2)
+    regset.write32(0,COUNTS*256*256+1+2)
+    dat.append(y)
+regset.close()
+print ("Pulses uploaded ...")
+</textarea>
+        </div>
+
+        <input class="favorite styled" type="button" id="run_upload" value="Upload Signal" onclick="upload()">
+        <hr>
+
+      <h2>3. Transfer the Acquisition Script for the Fast ADCs</h2>
+
+<p style="color:black;font-size:30px;">
+            The following Python script arms the trigger and acquires data with the fast ADCs of the RedPitaya. Configure the data taking process with the following Python script. 
+
+
+        </p>
+
+       <div  id="block_container" style="text-align:center;margin: 3px solid;">
+<p  style="color:black;font-size:30px;"> Paste o Write Your Python Code Here</p>
+
+<textarea id="code_input_save" style="width: 100%; white-space: pre; border:solid 5px #003b5c;"  rows="20" cols="120">
+#!/usr/bin/python3
+import sys
+import time
+
+
+import numpy as np
+from datetime import datetime
+evt_number = int(sys.argv[1])
+
+trig_mode = sys.argv[2]
+
+if (trig_mode == "NORMAL") : max_save = 10000 # Max number of events to save
+else: max_save = 1
+
+filename = sys.argv[3]
+
+f = open(filename, "a")
+
+
+
+#print("Number of input arguments ",len(sys.argv))
+#for i in range(len(sys.argv)):
+#    print(sys.argv[i])
+
+
+##########################################################################inputs
+CHANNEL = 1 # 1
+GAIN = 1 # Select 1 or 20 for +- 1 V or +- 20 V according to your RP jumper LV or HV
+TRESHOLD_VOLT = -.3 # Volt
+POINTS_SAVE_AFTER_TRIGGER = 9000 # ns
+WINDOW_DOUBLE_PULSE = 20000 # ns
+EDGE = 0 # 1 for PosEdge trigger  0 for NegEdge trigger
+MODE = 1 # # MODE = 0 Single-Pulse Trigger   MODE = 1  Double-Pulse Trigger
+VETO_NS = 200 # ns
+
+WINDOW_DOUBLE_PULSE = int(WINDOW_DOUBLE_PULSE/8)
+POINTS_SAVE_AFTER_TRIGGER = int(POINTS_SAVE_AFTER_TRIGGER/8)
+VETO = int (VETO_NS/8)
+#POINTS_BEFORE_TRIGGER = WINDOW_DOUBLE_PULSE
+if (MODE == 0):
+    DELAY = 3   # 3 is the constant delay of trigger in Single-pulse mode
+else:
+    DELAY = 5  # 5 is the constant delay if trigger in Double-pulse mode
+TRESHOLD_COUNTS = int(TRESHOLD_VOLT * 2**14/(-2*GAIN) + 2**13)
+#print ("TRESHOLD_COUNTS = ", TRESHOLD_COUNTS , "for TRESHOLD_VOLT =",TRESHOLD_VOLT, " Volt")
+print ("Threshold (V) =",TRESHOLD_VOLT, " EDGE = ",EDGE," MODE = ",MODE, " Trigger Mode = ",trig_mode," VETO (ns) = ",VETO_NS )
+from periphery import MMIO
+####################################################################
+regset = MMIO(0x41220000, 0xc)
+regset.write32(0,POINTS_SAVE_AFTER_TRIGGER*256*256+WINDOW_DOUBLE_PULSE) # POINTS_AFTER_TRIGGER and WINDOW_DOUBLE_PULSE
+regset.write32(8,MODE) # MODE = 0 SINGLE  MODE = 1 DOUBLE
+regset.close()
+####################################################################
+for i in range(max_save):
+    daq = 1
+    regset = MMIO(0x41200000, 0xc)
+    regset.write32(0,TRESHOLD_COUNTS*256*256) # TRESHOLD
+    ADDR_TRIG_OLD = int(regset.read32(8)/256/256) - DELAY
+    regset.write32(0,TRESHOLD_COUNTS*256*256+2) # TRESHOLD and ENABLE TRIGGER
+    regset.write32(0,TRESHOLD_COUNTS*256*256)
+    regset.close()
+    ####################################################################
+    regset = MMIO(0x41230000, 0xc)
+    regset.write32(8,VETO*16 + EDGE) # TRIGGER EDGE and VETO
+    regset.close()
+
+    #############################################################################
+
+    regset = MMIO(0x41210000, 0xc)
+    NUM_SINGLES = regset.read32(8) % (256*256)
+    NUM_DOUBLES = int(regset.read32(8) / (256*256))
+    print ("Num Single Pulses = ", NUM_SINGLES, " Num Double Pulses = ",NUM_DOUBLES)
+    f.write(datetime.now().strftime("%Y%m%d-%H%M%S") + " ")
+    f.write("Threshold (V) = "+str(TRESHOLD_VOLT) + " EDGE = " + str(EDGE) + " MODE = " + str(MODE)+ " Trigger Mode = " + str(trig_mode)+ " VETO (ns) = " + str(VETO_NS)+ " ")
+
+    f.write("Num Single-Pulses = "+str(NUM_SINGLES) + " Num Double Pulses = " + str(NUM_DOUBLES) + " ")
+    regset.close()
+
+    ####################################################################
+
+
+    regset = MMIO(0x41200000, 0xc)
+    while(daq == 1):
+        time.sleep(.01) # to avoid saturating the RedPitaya CPUs
+        ADDR_TRIG_NEW =  int(regset.read32(8)/256/256) - DELAY
+        if ADDR_TRIG_NEW != ADDR_TRIG_OLD:   # TRIGGER DETECTED
+            daq = 0
+    regset.close()
+    ####################################################################
+    if MODE == 1:
+        regset = MMIO(0x41230000, 0xc)
+        DT_BETWEEN_PULSES = regset.read32(0)
+        regset.close()
+        print("Measured Delta Time Between first and second trigger (ns) =  ",DT_BETWEEN_PULSES*8,",",evt_number+i,",")
+        f.write("Measured Delta Time Between first and second trigger (ns) =  ")
+        f.write(str(DT_BETWEEN_PULSES*8))
+    else:
+        DT_BETWEEN_PULSES = POINTS_SAVE_AFTER_TRIGGER - 40
+    ####################################################################
+    regset = MMIO(0x41200000, 0xc)
+    #f.write("Evt number: ",evt_number+i,",")
+    f.write(",")
+    f.write(str(evt_number+i))
+    f.write(",")
+    #print("Pointer at trigger= ",ADDR_TRIG_NEW," =",hex(ADDR_TRIG_NEW))
+    dat = []
+    n = 0
+    for ADDR_B in range(ADDR_TRIG_NEW-DT_BETWEEN_PULSES-40,ADDR_TRIG_NEW+ POINTS_SAVE_AFTER_TRIGGER,1):
+        n += 1
+        ADDR_B = ADDR_B%2**12
+        regset.write32(0,TRESHOLD_COUNTS*256*256+ADDR_B*16)
+        regset.write32(0,TRESHOLD_COUNTS*256*256+ADDR_B*16+1)
+        COUNTS = regset.read32(8)%(256*256)
+        DATA_VOLT = -2*GAIN*(COUNTS-2**13)/2**14
+        dat.append(round(DATA_VOLT,3))
+        f.write(str(round(DATA_VOLT,3)))
+        f.write(",")
+        print(round(DATA_VOLT,3),",")
+    f.write("\\n")
+    regset.close()
+    
+    ####################################################################
+    #y = dat
+    #print(dat)
+    #np.savetxt("test.csv", np.asarray(dat), delimiter=",")
+    #arr.tofile(filename, sep = ","")
+    #event_data = asarray(dat)
+    #arr = np.asarray(dat)
+    #arr.tofile('event.csv', sep = ',')   
+f.close()
+</textarea>
+ 
+       
+ </div> 
+
+ <input  class="favorite styled" type="button" id="start_stop" value="Save DAQ Script" onclick="save_arm_trigger()">
+   <hr>
+     <h2>4. Start/Stop the Arbitrary Signal Generator </h2>
+
+
+
+<p style="color:black;font-size:30px;">
+
+            The following Python script starts the DAC to generate the arbitrary waveform defined previously.
+
+
+        </p>
+
+       <div  id="block_container" style="text-align:center;margin: 3px solid;">
+<p  style="color:black;font-size:30px;"> Paste o Write Your Python Code to Start the ASG Here.</p>
+
+<textarea id="code_input_start_DAC" style="width: 100%; white-space: pre; border:solid 5px #003b5c;"  rows="12" cols="120">
+#!/usr/bin/python 
+from periphery import MMIO
+import time
+period = 1 #s
+regset = MMIO(0x41240000, 0xc)
+while (1):
+    regset.write32(0,0)   # Reset port B
+    regset.write32(0,4)   # Reset port B
+    time.sleep(period)
+regset.close()
+
+</textarea>
+ 
+       
+ </div> 
+
+ <input  class="favorite styled" type="button"  value="Start ASG" onclick="start_DAC()">
+  
+<label style="color:black;font-size:30px;"> Signal Generator:</label>
+<input class="favorite styled" type="button" id="generator" value="OFF" onclick="trigger()">
+   <hr>
+ 
+   <h2>5. Start/Stop the Acquisition Script for the Fast ADCs</h2>
+
+
+
+<p style="color:black;font-size:30px;">
+   Connect ADC1 to DAC1 if you want to digitize the the arbitrary signal generated by the fast DAC.
+
+    <br><br>
+            Here we execute the acquisition code saved previously.
+
+
+                        <br>
+                  <input class="favorite styled" type="button" id="single" value="SINGLE" onclick="single()">
+            <input class="favorite styled" type="button" id="normal" value="NORMAL" onclick="normal()">
+
+
+                <label> Trigger Mode:</label>
+
+                <input class="favorite styled" type="button" id="arm_trigger" value="OFF" onclick="trigger()">
+ </p>
+
+ <p style="color:black;font-size:30px;">
+   In trigger mode NORMAL the events can be visualized with the VIEW button.</p>
+
+   <hr>
+<div  id="block_container">        
+<div id="plot1" style= "border:solid 5px #003b5c"></div>
+    </div> 
+    <div style="color:black;font-size:30px;" id="data_display_plot"></div>
+
+<h2>6. Visualize Events</h2>
+
+
+
+<p style="color:black;font-size:30px;">
+    Events can be visualized only after they are acquired. Turn off the signal generator prior to using visualization by typing <i>killall python3</i> on a terminal of the RedPitaya.
+    <br>
+    <input type="checkbox" id="localFile" style="color:black;font-size:20px;" >
+        <label  style="color:black;font-size:20px;">Local File </label>  
+        <input class="favorite styled"  type="file" onchange="loadFile()" /><br />
+    <label style="color:black;font-size:30px;">Filename: </label>
+        <input type="text" id="visualize" class = "input" style="font-size: 100%;" onchange="visualize()" value="" size=20 ;></input>
+        <input class="favorite styled" type="button"  value="View" onclick="visualize()">
+        <br>
+        <input class="favorite styled" type="button"  value="Next" onclick="next()">
+        <input class="favorite styled" type="button"  value="Previous" onclick="previous()">
+
+
+ </p>
+   <hr>
+<div  id="block_container">        
+<div id="plot2" style= "border:solid 5px #003b5c"></div>
+    </div> 
+    <div style="color:black;font-size:30px;" id="data_display_plot2"></div>
+
+
+        <hr>
+  <h2>7. Other Options Using C</h2>
+
+<p style="color:black;font-size:30px;">
+            Other possibilities are to use the C language with the C-Pheryphery code for mode details see <a href="https://github.com/lvillasen/RedPitaya-C-Periphery"> here</a>.
+
+<br><br>
+These options require some modifications to the JavaScript code given here.
+
+ </p>
+
+  
+<br><br>
+</body>
+<script src="client.js"></script>
+</html>
