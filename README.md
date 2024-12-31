@@ -42,9 +42,6 @@ Connect ADC1 to DAC1 or alternatively conect the ADC to the detector and follow 
 
 Reboot the RedPitaya board or *cat fpga_0.94.bit > /dev/xdevcfg* to reinstall the official bitstream on the Zynq FPGA.
 
-## Web Page
-
-https://ciiec.buap.mx/RedPitaya-Muon-Decay-App
 
 ## Credits
 
